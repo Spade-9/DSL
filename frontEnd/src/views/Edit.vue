@@ -48,7 +48,7 @@
   const userStore = mainStore();
   const collapsed = ref(false);
   const selectedKeys = ref(['1']);
-  const activeComponent = ref('');
+  const activeComponent = ref('info');
   const text = ref('');
   
   const showChat = () => {

@@ -1,64 +1,162 @@
-Step Start
-Speak "Welcome! Are you looking for product recommendations? (Product/Goodbye)"
-Listen 10
-Branch "Product" ProductQuestion
-Branch "Goodbye" Goodbye
-Silence Timeout
-Default Timeout
+Step welcome
+    Speak $name + "您好，我是智能客服，很高兴为您服务。"
+    Speak "我可以协助查询账单、调整套餐、转人工坐席或记录投诉。"
+    Listen 12
+    Branch "账单" billEntry
+    Branch "套餐" planEntry
+    Branch "人工" humanEntry
+    Branch "投诉" complainProc
+    Silence silenceProc
+    Default clarifyProc
 
-Step Timeout
-Speak "Session timed out due to inactivity. Please restart."
-Exit
+Step billEntry
+    Speak "当前账单金额为" + $amount + "元。"
+    Speak "需要我发送支付链接还是介绍分期方案？"
+    Listen 10
+    Branch "支付" payLink
+    Branch "分期" installment
+    Branch "账单" billEntry
+    Silence silenceProc
+    Default clarifyProc
 
-Step ProductQuestion
-Speak "Great! What category are you interested in? (options: electronics, clothing, books)"
-Listen 10
-Branch "electronics" RecommendElectronics
-Branch "clothing" RecommendClothing
-Branch "books" RecommendBooks
-Silence InvalidCategory
-Default InvalidCategory
+Step payLink
+    Speak "好的，我已通过短信把支付链接发送到您的手机号，请查收。"
+    Speak "还需要其他帮助吗？说：套餐、投诉或人工。"
+    Listen 10
+    Branch "套餐" planEntry
+    Branch "投诉" complainProc
+    Branch "人工" humanEntry
+    Silence silenceProc
+    Default goodbye
 
-Step InvalidCategory
-Speak "Invalid category. Please choose from electronics, clothing, or books."
-Default ProductQuestion
+Step installment
+    Speak "我们提供3期、6期和12期分期方案，最低利率3%。"
+    Speak "想了解具体方案还是返回主菜单？"
+    Listen 10
+    Branch "方案" installmentDetail
+    Branch "主菜单" welcome
+    Silence silenceProc
+    Default clarifyProc
 
-Step RecommendElectronics 
-Speak "Here are some popular electronics: Smartphone, Laptop, Headphones." + "Would you like more details? (Electronics/Goodbye)"
-Listen 10
-Branch "Electronics" ElectronicsDetails
-Branch "Goodbye" Goodbye
-Silence Timeout
-Default Timeout
+Step installmentDetail
+    Speak "3期免息，6期月费率0.5%，12期月费率0.35%。"
+    Speak "我可以帮您直接申请，也可以返回主菜单。"
+    Listen 10
+    Branch "申请" applyInstallment
+    Branch "主菜单" welcome
+    Silence silenceProc
+    Default goodbye
 
-Step RecommendClothing
-Speak "Popular clothing items: Jacket, Jeans, T-Shirt." + "Would you like more details? (Clothing/Goodbye)"
-Listen 10
-Branch "Clothing" ClothingDetails
-Branch "Goodbye" Goodbye
-Silence Timeout
-Default Timeout
+Step applyInstallment
+    Speak "申请已提交，审核通过后会短信通知您。"
+    Speak "还有其他我可以帮忙的吗？"
+    Listen 10
+    Branch "套餐" planEntry
+    Branch "投诉" complainProc
+    Branch "人工" humanEntry
+    Silence silenceProc
+    Default goodbye
 
-Step RecommendBooks
-Speak "Popular books: '1984', 'To Kill a Mockingbird', 'The Great Gatsby'." + "Would you like more details? (Books/Goodbye)"
-Listen 10
-Branch "Books" BooksDetails
-Branch "Goodbye" Goodbye
-Silence Timeout
-Default Timeout
+Step planEntry
+    Speak "目前您使用的套餐是" + $plan + "，每月费用" + $planFee + "元。"
+    Speak "想要升级、降级，还是了解新增流量包？"
+    Listen 12
+    Branch "升级" upgradePlan
+    Branch "降级" downgradePlan
+    Branch "流量" addOnData
+    Silence silenceProc
+    Default clarifyProc
 
-Step ElectronicsDetails
-Speak "Smartphone: " + $SmartphonePrice + ", Laptop: " + $LaptopPrice + ", Headphones: " + $HeadphonesPrice + ". " + "Thank you for visiting. Have a great day!"
-Exit
+Step upgradePlan
+    Speak "推荐升级到尊享套餐，每月" + $upgradeFee + "元，含" + $upgradeData + "G流量。"
+    Speak "需要我立即为您升级吗？"
+    Listen 10
+    Branch "是" upgradeConfirm
+    Branch "否" planEntry
+    Silence silenceProc
+    Default goodbye
 
-Step ClothingDetails
-Speak "Jacket: " + $JacketPrice + ", Jeans: " + $JeansPrice + ", T-Shirt: " + $T-ShirtPrice + ". " + "Thank you for visiting. Have a great day!"
-Exit
+Step upgradeConfirm
+    Speak "已为您升级，新的资费将在下个账期生效。"
+    Speak "我还能为您做些什么？"
+    Listen 10
+    Branch "账单" billEntry
+    Branch "投诉" complainProc
+    Branch "人工" humanEntry
+    Silence silenceProc
+    Default goodbye
 
-Step BooksDetails
-Speak "'1984': " + $1984Price + ", 'To Kill a Mockingbird': " + $ToKillAMockingbirdPrice + ", 'The Great Gatsby': " + $TheGreatGatsbyPrice +". " + "Thank you for visiting. Have a great day!"
-Exit
+Step downgradePlan
+    Speak "降级将从下月起生效，并可能影响当前优惠。确定继续吗？"
+    Listen 10
+    Branch "继续" downgradeConfirm
+    Branch "返回" planEntry
+    Silence silenceProc
+    Default goodbye
 
-Step Goodbye
-Speak "Thank you for visiting. Have a great day!"
-Exit
+Step downgradeConfirm
+    Speak "已记录您的降级申请，客服稍后会电话确认。"
+    Speak "需要我转人工或返回主菜单吗？"
+    Listen 10
+    Branch "人工" humanEntry
+    Branch "主菜单" welcome
+    Silence silenceProc
+    Default goodbye
+
+Step addOnData
+    Speak "新增流量包包含10G、30G和100G三种，是否需要我发送详情短信？"
+    Listen 10
+    Branch "是" sendAddOnInfo
+    Branch "否" planEntry
+    Silence silenceProc
+    Default goodbye
+
+Step sendAddOnInfo
+    Speak "短信已发送，您可直接回复购买。"
+    Speak "还需要我帮忙的吗？"
+    Listen 10
+    Branch "账单" billEntry
+    Branch "投诉" complainProc
+    Branch "人工" humanEntry
+    Silence silenceProc
+    Default goodbye
+
+Step humanEntry
+    Speak "好的，正在为您连接人工客服，请稍候。"
+    Exit
+
+Step complainProc
+    Speak "非常抱歉给您带来不便，请描述问题详情，我会记录并升级处理。"
+    Listen 12
+    Speak "投诉已记录，编号是" + $complainId + "，稍后会有专员联系您。"
+    Speak "是否还需要其他帮助？"
+    Listen 10
+    Branch "账单" billEntry
+    Branch "套餐" planEntry
+    Branch "人工" humanEntry
+    Silence silenceProc
+    Default goodbye
+
+Step clarifyProc
+    Speak "抱歉，我没有听清，您可以说：账单、套餐、人工或投诉。"
+    Listen 8
+    Branch "账单" billEntry
+    Branch "套餐" planEntry
+    Branch "人工" humanEntry
+    Branch "投诉" complainProc
+    Silence silenceProc
+    Default clarifyProc
+
+Step silenceProc
+    Speak "听不清您的声音，如果需要帮助请大声一点或明确说出诉求。"
+    Listen 8
+    Branch "账单" billEntry
+    Branch "套餐" planEntry
+    Branch "人工" humanEntry
+    Branch "投诉" complainProc
+    Silence silenceProc
+    Default goodbye
+
+Step goodbye
+    Speak "感谢联系，若需要帮助随时呼叫我。再见！"
+    Exit

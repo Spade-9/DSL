@@ -1,4 +1,5 @@
 import threading
+from collections import deque
 from src.Interpreter.DataStructure import UserTable
 
 class Interpreter:
@@ -12,8 +13,8 @@ class Interpreter:
         self.curStep = None  # 当前步骤
         self.userInput = None  # 用户输入
         self.inputEvent = threading.Event()  # 线程事件，用于等待输入
-        self.resultLock = threading.Lock()  # 线程锁，确保对latest_result的线程安全访问
-        self.latestResult = None  # 最新结果缓存
+        self.resultLock = threading.Lock()  # 线程锁，确保结果队列的线程安全访问
+        self.resultQueue = deque()  # 最新结果缓存队列
         self.stopEvent = threading.Event()  # 停止标志
         self.dispatchThread = None  # 当前调度线程
 
@@ -28,6 +29,11 @@ class Interpreter:
     def getInfo(self):
         """获取所有变量名"""
         return self.tree.getVarName()
+
+    def getUserData(self):
+        """获取当前用户变量值"""
+        table = self.userTable.getTable()
+        return {key: table.get(key) for key in self.tree.getVarName()}
 
     def setUserInput(self, userInput):
         """设置用户输入并触发事件"""
@@ -63,9 +69,14 @@ class Interpreter:
     def getLatestResult(self):
         """获取并清除最新结果"""
         with self.resultLock:
-            result = self.latestResult
-            self.latestResult = None  # 读取后清空最新结果
-            return result
+            if self.resultQueue:
+                return self.resultQueue.popleft()
+            return None
+
+    def _pushResult(self, message):
+        """线程安全地追加结果"""
+        with self.resultLock:
+            self.resultQueue.append(message)
 
     def dispatch(self):
         """
@@ -77,8 +88,7 @@ class Interpreter:
             stepTable = self.tree.getStep()
             if stepName not in stepTable:
                 print(f"错误：步骤 '{stepName}' 不存在")
-                with self.resultLock:
-                    self.latestResult = f"系统错误：未知步骤 {stepName}"
+                self._pushResult(f"系统错误：未知步骤 {stepName}")
                 return
             self.curStep = stepTable[stepName]  # 获取当前步骤
             flag = False  # 标记，用于跳过无效步骤
@@ -134,8 +144,7 @@ class Interpreter:
             else:
                 expression += state[i]  # 如果不是变量，直接拼接
         print(expression)  # 输出表达式
-        with self.resultLock:
-            self.latestResult = expression  # 保存最新结果
+        self._pushResult(expression)  # 保存最新结果
         return
 
     def doListen(self, state):
@@ -145,6 +154,10 @@ class Interpreter:
         self.userInput = None
         self.inputEvent.clear()  # 清除输入事件标志，等待用户输入
         isInTime = self.getInput(int(state[1]))  # 等待输入，超时后返回
+        if not isInTime:
+            hasSilenceHandler = any(step[0] == 'Silence' for step in self.curStep)
+            if not hasSilenceHandler:
+                self._pushResult("系统检测到您长时间未输入，如需继续请重新输入。")
         return isInTime
 
     def getInput(self, timeout):

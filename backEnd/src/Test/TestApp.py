@@ -52,18 +52,35 @@ class TestApp(unittest.TestCase):
         self.client.post('/register', data={'username': 'testuser', 'password': 'password'})
         self.client.post('/login', data={'username': 'testuser', 'password': 'password'})
 
+        # 获取初始信息
+        response = self.client.post('/getinfo', data={'username': 'testuser'})
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        expected_vars = [
+            'name', 'amount', 'plan', 'planFee', 'upgradeFee', 'upgradeData',
+            'complainId', 'SmartphonePrice', 'LaptopPrice', 'HeadphonesPrice',
+            'JacketPrice', 'JeansPrice', 'T-ShirtPrice', '1984Price',
+            'ToKillAMockingbirdPrice', 'TheGreatGatsbyPrice'
+        ]
+        self.assertEqual(payload.get('fields'), expected_vars)
+        values = payload.get('values', {})
+        self.assertEqual(values.get('name'), 'testuser')
+        self.assertIsNone(values.get('amount'))
+
         # 设置信息
         response = self.client.post('/setinfo', data={'username': 'testuser', 'name': 'Alice', 'amount': '100'})
         self.assertEqual(response.status_code, 200)
         response_data = response.get_json()
         self.assertEqual(response_data['message'], '信息设置成功')
 
-        # 获取信息
+        # 再次获取信息，确认更新成功
         response = self.client.post('/getinfo', data={'username': 'testuser'})
         self.assertEqual(response.status_code, 200)
-        actual_vars = response.get_json()
-        expected_vars = ['name', 'amount']  # 确保返回的字段与设置的一致
-        self.assertEqual(actual_vars, expected_vars)
+        payload = response.get_json()
+        self.assertEqual(payload.get('fields'), expected_vars)
+        values = payload.get('values', {})
+        self.assertEqual(values.get('name'), 'Alice')
+        self.assertEqual(values.get('amount'), '100')
 
     def testChatFlow(self):
         """

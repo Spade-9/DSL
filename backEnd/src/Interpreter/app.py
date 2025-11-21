@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)  # 启用跨域请求
 
 # 初始化解释器基础实例
-lex = Lexical('src/Test/Example/test1.txt')  # 词法分析器实例，读取文件并解析
+lex = Lexical('src/Test/Example/test2.txt')  # 词法分析器实例，读取文件并解析
 lex.printTokens()  # 打印解析出的词法单元
 grmTree = Grammar(lex.getTokens())  # 使用解析出的tokens创建语法树
 print(grmTree.getGrmTree().getStep())  # 打印语法树步骤
@@ -76,8 +76,14 @@ def getInfo():
     with userStateLock:
         if username not in userState:
             return jsonify({'error': '用户未登录'}), 403  # 检查用户是否登录
-        result = userState[username].getInfo()  # 获取用户的变量信息
-    return jsonify(result), 200
+        interpreter = userState[username]
+        fields = interpreter.getInfo()
+        values = interpreter.getUserData()
+    payload = {
+        'fields': fields,
+        'values': {key: values.get(key) for key in fields}
+    }
+    return jsonify(payload), 200
 
 @app.route('/setinfo', methods=['POST'])
 def setInfo():
@@ -88,11 +94,14 @@ def setInfo():
     with userStateLock: # 锁定用户状态字典
         if username not in userState:
             return jsonify({'error': '用户未登录'}), 403  # 检查用户是否登录
+        interpreter = userState[username]
+        payload = request.form
         # 更新用户信息
-        for infoName in userState[username].getInfo():
-            userInfoValue = request.form.get(infoName)
-            userState[username].setInfo(infoName, userInfoValue)  # 设置用户信息
-            print(infoName, userInfoValue)
+        for infoName in interpreter.getInfo():
+            if infoName in payload:
+                userInfoValue = payload.get(infoName)
+                interpreter.setInfo(infoName, userInfoValue)  # 设置用户信息
+                print(infoName, userInfoValue)
     return jsonify({'message': '信息设置成功'}), 200
 
 @app.route('/clearchat', methods=['POST'])

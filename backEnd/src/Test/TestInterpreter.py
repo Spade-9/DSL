@@ -98,5 +98,36 @@ class TestInterpreter(unittest.TestCase):
         # 验证输出是否包含无响应的消息
         self.assertIn("No response received", output)
 
+    def testListenTimeoutFallbackMessage(self):
+        """
+        Listen后未定义Silence时，也应提示超时信息。
+        """
+        tokens = [
+            ['Step', 'main'],
+            ['Speak', '"Welcome"'],
+            ['Listen', '1'],
+            ['Default', 'end'],
+            ['Step', 'end'],
+            ['Speak', '"Goodbye"'],
+            ['Exit']
+        ]
+        grammar = Grammar(tokens)
+        interpreter = Interpreter(grammar.getGrmTree())
+
+        interpreter.startDispatch()
+
+        import time
+        time.sleep(0.2)
+        first_msg = interpreter.getLatestResult()
+        self.assertEqual(first_msg, "Welcome")
+
+        time.sleep(1.2)
+        timeout_msg = interpreter.getLatestResult()
+        self.assertIsNotNone(timeout_msg)
+        self.assertIn("长时间未输入", timeout_msg)
+
+        follow_up = interpreter.getLatestResult()
+        self.assertEqual(follow_up, "Goodbye")
+
 if __name__ == '__main__':
     unittest.main()  # 执行测试
