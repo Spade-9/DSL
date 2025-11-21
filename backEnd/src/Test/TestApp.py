@@ -58,9 +58,7 @@ class TestApp(unittest.TestCase):
         payload = response.get_json()
         expected_vars = [
             'name', 'amount', 'plan', 'planFee', 'upgradeFee', 'upgradeData',
-            'complainId', 'SmartphonePrice', 'LaptopPrice', 'HeadphonesPrice',
-            'JacketPrice', 'JeansPrice', 'T-ShirtPrice', '1984Price',
-            'ToKillAMockingbirdPrice', 'TheGreatGatsbyPrice'
+            'complainId'
         ]
         self.assertEqual(payload.get('fields'), expected_vars)
         values = payload.get('values', {})

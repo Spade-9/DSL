@@ -1,6 +1,7 @@
 import threading
 from collections import deque
 from src.Interpreter.DataStructure import UserTable
+from src.Interpreter.intent_service import IntentService
 
 class Interpreter:
     def __init__(self, tree):
@@ -17,6 +18,8 @@ class Interpreter:
         self.resultQueue = deque()  # 最新结果缓存队列
         self.stopEvent = threading.Event()  # 停止标志
         self.dispatchThread = None  # 当前调度线程
+        self.intentService = IntentService()
+        self.intentMeta = None
 
     def setName(self, name):
         """设置用户名称"""
@@ -38,6 +41,7 @@ class Interpreter:
     def setUserInput(self, userInput):
         """设置用户输入并触发事件"""
         self.userInput = userInput
+        self.intentMeta = None
         self.inputEvent.set()  # 设置事件，表示用户输入已准备好
 
     def requestStop(self):
@@ -154,6 +158,12 @@ class Interpreter:
         self.userInput = None
         self.inputEvent.clear()  # 清除输入事件标志，等待用户输入
         isInTime = self.getInput(int(state[1]))  # 等待输入，超时后返回
+        if isInTime and self.userInput:
+            intent_result = self.intentService.match_intent(self.userInput)
+            self.intentMeta = intent_result
+            intent_keyword = intent_result.get('intent')
+            if intent_keyword and intent_keyword not in self.userInput:
+                self.userInput = f"{self.userInput} {intent_keyword}"
         if not isInTime:
             hasSilenceHandler = any(step[0] == 'Silence' for step in self.curStep)
             if not hasSilenceHandler:
