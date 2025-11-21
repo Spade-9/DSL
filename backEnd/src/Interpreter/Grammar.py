@@ -81,10 +81,10 @@ class Grammar:
         self.expr.addExpr(token[0])  # 添加第一个词法单元到表达式
         for i in range(1, len(token)):
             if token[i] == '+': continue  # 跳过 '+' 符号
-            elif token[i][0] == '$': 
+            elif token[i][0] == '$':  # 变量名以 $ 开头
                 self.grmTree.addVarName(token[i][1:])  # 添加变量到语法树
                 self.expr.addExpr(token[i][1:])  # 将变量名加入表达式
-            elif token[i][0] == '"' and token[i][-1] == '"': 
+            elif token[i][0] == '"' and token[i][-1] == '"':  # 如果字符串用双引号括起来
                 self.expr.addExpr(token[i][1:-1])  # 去掉引号并加入表达式
             else:
                 self.processError(token[i])  # 其他不合法token抛出错误

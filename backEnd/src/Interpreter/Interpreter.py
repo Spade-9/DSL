@@ -14,6 +14,8 @@ class Interpreter:
         self.inputEvent = threading.Event()  # 线程事件，用于等待输入
         self.resultLock = threading.Lock()  # 线程锁，确保对latest_result的线程安全访问
         self.latestResult = None  # 最新结果缓存
+        self.stopEvent = threading.Event()  # 停止标志
+        self.dispatchThread = None  # 当前调度线程
 
     def setName(self, name):
         """设置用户名称"""
@@ -32,6 +34,32 @@ class Interpreter:
         self.userInput = userInput
         self.inputEvent.set()  # 设置事件，表示用户输入已准备好
 
+    def requestStop(self):
+        """请求停止当前调度"""
+        self.stopEvent.set()
+        self.inputEvent.set()  # 确保阻塞的监听被唤醒
+
+    def isDispatching(self):
+        return self.dispatchThread is not None and self.dispatchThread.is_alive()
+
+    def startDispatch(self):
+        """启动新的调度线程，若已有线程运行则先停止"""
+        if self.isDispatching():
+            self.requestStop()
+            self.dispatchThread.join(timeout=1)
+
+        self.stopEvent.clear()
+
+        def _runner():
+            try:
+                self.dispatch()
+            finally:
+                self.stopEvent.clear()
+                self.dispatchThread = None
+
+        self.dispatchThread = threading.Thread(target=_runner, daemon=True)
+        self.dispatchThread.start()
+
     def getLatestResult(self):
         """获取并清除最新结果"""
         with self.resultLock:
@@ -45,15 +73,25 @@ class Interpreter:
         """
         stepName = self.mainStep  # 从主步骤开始
         isInTime = False  # 是否在合适的时间点进行分支
-        while stepName:
-            self.curStep = self.tree.getStep()[stepName]  # 获取当前步骤
+        while stepName and not self.stopEvent.is_set():
+            stepTable = self.tree.getStep()
+            if stepName not in stepTable:
+                print(f"错误：步骤 '{stepName}' 不存在")
+                with self.resultLock:
+                    self.latestResult = f"系统错误：未知步骤 {stepName}"
+                return
+            self.curStep = stepTable[stepName]  # 获取当前步骤
             flag = False  # 标记，用于跳过无效步骤
 
             for state in self.curStep:
+                if self.stopEvent.is_set():
+                    return
                 if state[0] == 'Speak':
                     self.doSpeak(state)  # 执行说话操作
                 elif state[0] == 'Listen':
                     isInTime = self.doListen(state)  # 执行监听操作
+                    if self.stopEvent.is_set():
+                        return
                 elif state[0] == 'Branch':
                     if isInTime:
                         # 处理分支，根据用户输入决定跳转到哪个步骤
@@ -91,7 +129,8 @@ class Interpreter:
         for i in range(1, len(state)):
             # 替换表达式中的变量
             if state[i] in self.tree.getVarName():
-                expression += self.userTable.getTable()[state[i]]
+                value = self.userTable.getTable().get(state[i])
+                expression += str(value) if value is not None else f'[{state[i]}]'
             else:
                 expression += state[i]  # 如果不是变量，直接拼接
         print(expression)  # 输出表达式
@@ -113,6 +152,8 @@ class Interpreter:
         等待用户输入，超时则返回False。
         """
         isSet = self.inputEvent.wait(timeout)  # 等待用户输入事件触发
+        if self.stopEvent.is_set():
+            return False
         if isSet:
             print(f"用户输入：{self.userInput}")
             return True  # 用户输入有效

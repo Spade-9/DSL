@@ -24,13 +24,6 @@ userInfoLock = Lock()  # 用于锁定用户信息字典
 userState = {}
 userStateLock = Lock()  # 用于锁定用户状态字典
 
-def runDispatch(username):
-    """
-    启动用户的解释器调度
-    """
-    userState[username].dispatch()  # 执行用户的调度逻辑
-    return
-
 @app.route('/register', methods=['POST'])
 def register():
     """
@@ -92,7 +85,7 @@ def setInfo():
     设置用户信息。
     """
     username = request.form.get('username')
-    with userStateLock:
+    with userStateLock: # 锁定用户状态字典
         if username not in userState:
             return jsonify({'error': '用户未登录'}), 403  # 检查用户是否登录
         # 更新用户信息
@@ -112,9 +105,9 @@ def clearChat():
     with userStateLock:
         if username not in userState:
             return jsonify({'error': '用户未登录'}), 403  # 检查用户是否登录
-        # 创建一个后台线程来执行 dispatch() 方法
-        thread = threading.Thread(target=runDispatch, args=(username,))
-        thread.start()  # 启动线程
+        interpreter = userState[username]
+
+    interpreter.startDispatch()
 
     return jsonify({'message': '对话已清除'}), 200
 

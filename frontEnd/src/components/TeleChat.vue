@@ -34,7 +34,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useTeleChatStore } from '../apis/Chat/chatStore';
 import { mainStore } from '../store';
 import dayjs from 'dayjs';
@@ -136,6 +136,13 @@ export default {
 
         onMounted(() => {
             clearChat();
+        });
+
+        onUnmounted(() => {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
         });
 
         return {
